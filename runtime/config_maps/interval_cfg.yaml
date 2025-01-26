@@ -1,0 +1,7 @@
+apiVersion: v1
+data:
+  INTERVAL_KEY: "10"
+kind: ConfigMap
+metadata:
+  name: intervalkey
+  namespace: caiocaldeira

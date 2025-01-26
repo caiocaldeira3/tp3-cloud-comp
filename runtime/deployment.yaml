@@ -39,6 +39,7 @@ spec:
             configMapKeyRef:
               name: inputkey
               key: REDIS_INPUT_KEY
+              optional: true
         - name: REDIS_OUTPUT_KEY
           valueFrom:
             configMapKeyRef:
@@ -49,6 +50,7 @@ spec:
             configMapKeyRef:
               name: intervalkey
               key: INTERVAL_KEY
+              optional: true
         - name: ENTRYPOINT
           valueFrom:
             configMapKeyRef:

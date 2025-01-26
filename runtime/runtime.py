@@ -13,18 +13,12 @@ from context import Context
 
 sys.path.append("/opt/")
 
-module_loader = importlib.util.find_spec("usermodule")
-
-import usermodule
-
-
 ENTRYPOINT_MODULE, ENTRYPOINT_METHOD = (
     ("usermodule", "handler")
     if os.environ.get("ENTRYPOINT", "usermodule.handler") == "usermodule.handler"
     else os.environ["ENTRYPOINT"].rsplit(".", 1)
 )
 
-handler_module = usermodule
 if os.path.isfile("/opt/modules64") and os.path.getsize("/opt/modules64") > 0:
     with open("/opt/modules64", "r") as encoded_file:
         base64_content = encoded_file.read()
@@ -35,25 +29,17 @@ if os.path.isfile("/opt/modules64") and os.path.getsize("/opt/modules64") > 0:
     with zipfile.ZipFile("/opt/modules.zip", "r") as zip_ref:
         zip_ref.extractall("/opt/")
 
-    sys.path.append("/opt/")
-
-    if ENTRYPOINT_MODULE != "usermodule":
-        handler_module = importlib.import_module(ENTRYPOINT_MODULE)
-
-else:
-    print("No modules64 found")
-
-
 redis_client = redis.StrictRedis(
     host=os.environ["REDIS_HOST"],
     port=int(os.environ["REDIS_PORT"]),
     decode_responses=True
 )
 
-INTERVAL: Final = float(os.environ["INTERVAL_KEY"])
-REDIS_INPUT_KEY: Final = os.environ["REDIS_INPUT_KEY"]
+INTERVAL: Final = float(os.environ.get("INTERVAL_KEY", 5))
+REDIS_INPUT_KEY: Final = os.environ.get("REDIS_INPUT_KEY", "metrics")
 REDIS_OUTPUT_KEY: Final = os.environ["REDIS_OUTPUT_KEY"]
 
+handler_module = importlib.import_module(ENTRYPOINT_MODULE)
 handler_method: Callable
 if hasattr(handler_module, ENTRYPOINT_METHOD):
     handler_method = getattr(handler_module, ENTRYPOINT_METHOD)
@@ -81,7 +67,5 @@ while True:
         output = handler_method(metrics, ctx)
 
         redis_client.set(REDIS_OUTPUT_KEY, json.dumps(output))
-
-        ctx.last_execution = datetime.now()
 
     time.sleep(INTERVAL)
