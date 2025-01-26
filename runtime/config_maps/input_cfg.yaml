@@ -1,0 +1,7 @@
+apiVersion: v1
+data:
+  REDIS_INPUT_KEY: metrics
+kind: ConfigMap
+metadata:
+  name: inputkey
+  namespace: caiocaldeira

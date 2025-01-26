@@ -3,8 +3,14 @@ from dash import Dash, html, dash_table, dcc
 from dash.dependencies import Input, Output
 import json
 
+import os
+
 # Connect to Redis
-redis_client = redis.StrictRedis(host='localhost', port=6379, decode_responses=True)
+redis_client = redis.StrictRedis(
+    host=os.environ["REDIS_HOST"],
+    port=int(os.environ["REDIS_PORT"]),
+    decode_responses=True
+)
 
 # Initialize Dash app
 app = Dash(__name__)
@@ -35,10 +41,14 @@ app.layout = html.Div([
     [Input('interval-component', 'n_intervals')]
 )
 def update_table(_):
-    metrics = json.load(open("metrics.json"))
+    metrics = json.loads(redis_client.get(os.environ["REDIS_OUTPUT_KEY"]))
     if metrics:
         return [
-            {"timestamp": metrics["timestamp"], "metric": key, "value": round(value, 2)}
+            {
+                "timestamp": metrics["timestamp"],
+                "metric": key,
+                "value": round(value, 2) if isinstance(value, float) else value
+            }
             for key, value in metrics.items() if key != "timestamp"
         ]
 

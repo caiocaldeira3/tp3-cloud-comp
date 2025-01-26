@@ -19,3 +19,30 @@ spec:
           imagePullPolicy: Always
           ports:
             - containerPort: 8050
+          env:
+          - name: REDIS_HOST
+            value: "192.168.121.187"
+          - name: REDIS_PORT
+            value: "6379"
+          - name: REDIS_OUTPUT_KEY
+            valueFrom:
+              configMapKeyRef:
+                name: outputkey
+                key: REDIS_OUTPUT_KEY
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: dashboard-service
+  namespace: caiocaldeira
+spec:
+  selector:
+    app: dashboard-app
+  ports:
+  - protocol: TCP
+    port: 52007
+    nodePort: 52007
+    targetPort: 8050
+  type: NodePort

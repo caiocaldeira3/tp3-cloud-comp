@@ -1,0 +1,38 @@
+apiVersion: v1
+data:
+  pyfile: "from datetime import datetime, timedelta\r\nimport numpy as np\r\n\r\nfrom
+    typing import Any, Final\r\n\r\nCPU_IDX_OFFSET: Final = len(\"cpu_percent-\")\r\n\r\ndef
+    add_cpu_metrics_to_env (\r\n    cpu_key: str, cpu_percent: float, timestamp: datetime,
+    env: dict[str, Any]\r\n) -> None:\r\n    cpu_idx = cpu_key[CPU_IDX_OFFSET:]\r\n
+    \   cpu_metric = f\"avg-util-cpu{cpu_idx}-60s\"\r\n\r\n    if cpu_metric not in
+    env:\r\n        env[cpu_metric] = []\r\n\r\n    env[cpu_metric].append({\r\n        \"timestamp\":
+    timestamp.strftime(\"%Y-%m-%d %H:%M:%S.%f\"),\r\n        \"cpu_util-percent\":
+    cpu_percent\r\n    })\r\n\r\ndef cleanup_cpu_metrics (env: dict[str, Any], timestamp:
+    datetime) -> None:\r\n    for key in list(env.keys()):\r\n        if not key.startswith(\"avg-util-cpu\"):\r\n
+    \           continue\r\n\r\n        cpu_metric = env[key]\r\n        while len(cpu_metric)
+    > 0:\r\n            first_timestamp = datetime.strptime(cpu_metric[0][\"timestamp\"],
+    \"%Y-%m-%d %H:%M:%S.%f\")\r\n            if timestamp - first_timestamp < timedelta(seconds=60):\r\n
+    \               break\r\n\r\n            cpu_metric.pop(0)\r\n\r\n        if len(cpu_metric)
+    == 0:\r\n            raise ValueError(f\"Empty CPU metric: {key}\")\r\n\r\ndef
+    handler (input: dict[str, Any], context: object) -> dict[str, Any]:\r\n    timestamp
+    = datetime.strptime(input[\"timestamp\"], \"%Y-%m-%d %H:%M:%S.%f\")\r\n\r\n    sent_bytes
+    = input[\"net_io_counters_eth0-bytes_sent\"]\r\n    recv_bytes = input[\"net_io_counters_eth0-bytes_recv\"]\r\n\r\n
+    \   cached_memory = input[\"virtual_memory-cached\"]\r\n    buffer_memory = input[\"virtual_memory-buffers\"]\r\n
+    \   total_memory = input[\"virtual_memory-total\"]\r\n\r\n    persistent_env:
+    dict[str, Any] = context.env\r\n\r\n    percent_network_egress = (\r\n        sent_bytes
+    / (sent_bytes + recv_bytes)\r\n        if sent_bytes + recv_bytes > 0 else 0\r\n
+    \   )\r\n    percent_memory_cached = (\r\n        (cached_memory + buffer_memory)
+    / total_memory\r\n        if total_memory > 0 else 0\r\n    )\r\n\r\n    for key
+    in input:\r\n        if not key.startswith(\"cpu_percent-\"):\r\n            continue\r\n\r\n
+    \       add_cpu_metrics_to_env(key, input[key], timestamp, persistent_env)\r\n\r\n
+    \   cleanup_cpu_metrics(persistent_env, timestamp)\r\n\r\n    moving_average_results
+    = {\r\n        key: np.fromiter(\r\n            map(lambda obj: obj[\"cpu_util-percent\"],
+    persistent_env[key]), dtype=np.float64\r\n        ).mean()\r\n        for key
+    in persistent_env\r\n        if key.startswith(\"avg-util-cpu\")\r\n    }\r\n\r\n
+    \   return {\r\n        \"timestamp\": timestamp.strftime(\"%Y-%m-%d %H:%M:%S.%f\"),\r\n
+    \       \"percent-network-egress\": percent_network_egress,\r\n        \"percent-memory-caching-content\":
+    percent_memory_cached,\r\n        **moving_average_results\r\n    }\r\n"
+kind: ConfigMap
+metadata:
+  name: pyfile
+  namespace: caiocaldeira

@@ -1,0 +1,7 @@
+apiVersion: v1
+data:
+  ENTRYPOINT: serverless.handler
+kind: ConfigMap
+metadata:
+  name: entrypointkey
+  namespace: caiocaldeira

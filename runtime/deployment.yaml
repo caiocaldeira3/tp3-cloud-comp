@@ -1,0 +1,66 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: serverless-redis
+  namespace: caiocaldeira
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: serverless-redis
+  template:
+    metadata:
+      labels:
+        app: serverless-redis
+    spec:
+      containers:
+      - name: serverless-redis
+        image: quay.io/caiocaldeira/runtime-container:latest
+        imagePullPolicy: Always
+        resources:
+          requests:
+            cpu: 100m
+            memory: 300Mi
+        volumeMounts:
+        - name: pyfile
+          mountPath: "/opt/usermodule.py"
+          subPath: pyfile
+        - name: zipfile
+          mountPath: "/opt/modules64"
+          subPath: zipfile
+        env:
+        - name: REDIS_HOST
+          value: "192.168.121.187"
+        - name: REDIS_PORT
+          value: "6379"
+        - name: REDIS_INPUT_KEY
+          valueFrom:
+            configMapKeyRef:
+              name: inputkey
+              key: REDIS_INPUT_KEY
+        - name: REDIS_OUTPUT_KEY
+          valueFrom:
+            configMapKeyRef:
+              name: outputkey
+              key: REDIS_OUTPUT_KEY
+        - name: INTERVAL_KEY
+          valueFrom:
+            configMapKeyRef:
+              name: intervalkey
+              key: INTERVAL_KEY
+        - name: ENTRYPOINT
+          valueFrom:
+            configMapKeyRef:
+              name: entrypointkey
+              key: ENTRYPOINT
+              optional: true
+
+      volumes:
+      - name: pyfile
+        configMap:
+          name: pyfile
+      - name: zipfile
+        configMap:
+          name: zipfile
+          optional: true

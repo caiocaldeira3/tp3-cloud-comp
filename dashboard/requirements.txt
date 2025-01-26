@@ -1,2 +1,2 @@
-redis-cli==5.2.1
+redis==5.2.1
 dash==2.18.2
